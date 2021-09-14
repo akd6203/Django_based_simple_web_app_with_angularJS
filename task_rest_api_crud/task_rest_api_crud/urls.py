@@ -15,8 +15,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf.urls import include, url
+from django.conf import settings
 
 urlpatterns = [
     url('admin/', admin.site.urls, name='admin'),
-    url(r'', include(('teacher_student_app.urls', 'teacher_student_app'), namespace='core_app')),
+    url(r'app/', include(('teacher_student_app.urls', 'teacher_student_app'),
+                                    namespace='core_app')),
+    url(r'api/', include(('teacher_student_app.rest_api_module.urls', 'teacher_student_API'),
+                                    namespace='rest_api')),
 ]
+
+if settings.DEBUG:
+    import debug_toolbar
+
+    urlpatterns += [
+        url(r'^__debug__/', include(debug_toolbar.urls)),
+    ]
