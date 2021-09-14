@@ -4,7 +4,7 @@ class Teacher(models.Model):
     name = models.CharField(max_length=32)
     age = models.IntegerField(null=True)
     fav_subject = models.CharField(max_length=32)
-    my_students = models.ManyToManyField("Student")
+    my_students = models.ManyToManyField("Student", blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -14,7 +14,7 @@ class Teacher(models.Model):
 class Student(models.Model):
     name = models.CharField(max_length=32)
     age = models.IntegerField(null=True)
-    my_teachers =  models.ManyToManyField(Teacher)
+    my_teachers =  models.ManyToManyField("Teacher", blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
