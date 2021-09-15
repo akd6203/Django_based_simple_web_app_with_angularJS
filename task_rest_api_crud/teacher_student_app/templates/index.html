@@ -94,10 +94,10 @@
       $scope.StudentDelete = function(student_id){
         var confirm_status = confirm("Do you want to delete this student ?");
         if (confirm_status){
-          var delete_url = `{% url 'rest_api:student-list' %}`+'/'+teacher_id
+          var delete_url = `{% url 'rest_api:student-list' %}`+'/'+student_id
           var data = false;
           $http.delete(delete_url, data).then(function (response) {
-            $scope.api_result_data.results = $scope.api_result_data.results.filter((item) => item.id !== teacher_id);
+            $scope.api_result_data.results = $scope.api_result_data.results.filter((item) => item.id !== student_id);
           }, function (response) {
             console.log('error .....')
           });
