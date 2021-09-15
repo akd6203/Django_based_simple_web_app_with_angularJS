@@ -35,7 +35,7 @@ class StudentView(viewsets.ModelViewSet):
     permission_classes = (AllowAny, )
     serializer_class = StudentSerializer
     queryset = Student.objects.all()
-    
+
     # def get_queryset(self):
     #     return Teacher.objects.prefetch_related(
     #         Prefetch(

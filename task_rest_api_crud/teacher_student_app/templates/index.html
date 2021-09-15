@@ -4,12 +4,208 @@
 {% block content %}
 
 <script type="text/javascript">
-
+  var app = angular.module('myApp', []);
+  app.config(['$httpProvider', function ($httpProvider) {
+        $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+        $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
+    }]);
+  app.config(function ($interpolateProvider) {
+      $interpolateProvider.startSymbol('{$');
+      $interpolateProvider.endSymbol('$}');
+  });
+  app.controller('myCtrl', function($scope, $http) {
+      $scope.reset_home = function () {
+        $scope.showTeacherListPage = false;
+        $scope.showStudentListPage = false;
+        $scope.showTeacherDetailPage = false;
+        $scope.showStudentDetailPage = false;
+        $scope.show_home_page = true;
+        $scope.api_result_data = null;
+        $scope.searchText = "";
+        $scope.current_page_number = 0;
+      }
+      $scope.reset_home()
+      $scope.getTeacherDataFromRestApi = function(param) {
+        $http({method: 'GET', url: `{% url 'rest_api:teacher-list' %}`,data: param
+          }).then(function success(response) {
+            console.log(response)
+            $scope.api_result_data = response.data;
+            console.log($scope.api_result_data)
+          }, function error(response) {
+            console.log('something went wrong')
+          });
+      }
+      $scope.getStudentDataFromRestApi = function(param) {
+        $http({method: 'GET', url: `{% url 'rest_api:student-list' %}`,data: param
+          }).then(function success(response) {
+              console.log(response)
+              $scope.api_result_data = response.data;
+              console.log($scope.api_result_data)
+          }, function error(response) {
+            console.log('something went wrong')
+          });
+      }
+      $scope.PrevNextUpdate = function(api_url, type){
+        $http({method: 'GET', url: api_url , data: false
+          }).then(function success(response) {
+              console.log(response)
+              $scope.api_result_data = response.data;
+              if (type === 'prev') {
+                $scope.current_page_number -= 1;
+              }else {
+                $scope.current_page_number += 1;
+              }
+              console.log($scope.api_result_data)
+          }, function error(response) {
+            console.log('something went wrong')
+          });
+      }
+      $scope.showPageData = function (type, action) {
+        $scope.show_home_page = false
+        if (type === 'teacher') {
+          if (action === 'list') {
+            $scope.getTeacherDataFromRestApi(false);
+            $scope.showTeacherListPage = true;
+          } else {
+            $scope.showTeacherDetailPage = true;
+          }
+        }
+        else {
+          if (action === 'list') {
+            $scope.showStudentListPage = true;
+            $scope.getStudentDataFromRestApi(false);
+          } else {
+            $scope.showStudentListPage = true;
+          }
+        }
+      }
+      $scope.TeacherDelete = function(teacher_id){
+        var confirm_status = confirm("Do you want to delete this teacher ?");
+        if (confirm_status){
+          var delete_url = `{% url 'rest_api:teacher-list' %}`+'/'+teacher_id
+          var data = false;
+          $http.delete(delete_url, data).then(function (response) {
+            $scope.api_result_data.results = $scope.api_result_data.results.filter((item) => item.id !== teacher_id);
+          }, function (response) {
+            console.log('error .....')
+          });
+        }
+      }
+      $scope.StudentDelete = function(student_id){
+        var confirm_status = confirm("Do you want to delete this student ?");
+        if (confirm_status){
+          var delete_url = `{% url 'rest_api:student-list' %}`+'/'+teacher_id
+          var data = false;
+          $http.delete(delete_url, data).then(function (response) {
+            $scope.api_result_data.results = $scope.api_result_data.results.filter((item) => item.id !== teacher_id);
+          }, function (response) {
+            console.log('error .....')
+          });
+        }
+      }
+  });
 </script>
-<section>
-<div class="jumbotron text-center">
-  <h1>Index Bootstrap Page</h1>
-  <p>Nothing much</p>
+<style media="screen">
+  .clickable_text {
+    cursor: pointer;
+  }
+  .clickable_text:hover {
+    color: blue;
+  }
+</style>
+<section  ng-app="myApp" ng-controller="myCtrl">
+<div class="jumbotron text-center" ng-hide="showTeacherListPage || showStudentListPage">
+  <h2>Demo app</h2>
+</div>
+<!-- basic home view -->
+<div class="container" ng-show="show_home_page">
+  <div class="row mx-auto my-auto ">
+    <div class="jumbotron text-center col-md-6">
+      <h3 class="clickable_text" ng-click="showPageData('teacher', 'list')">Teachers data</h3>
+    </div>
+    <div class="jumbotron text-center col-md-6">
+      <h3 class="clickable_text" ng-click="showPageData('student', 'list')"">Student data</h3>
+    </div>
+  </div>
+</div>
+<!-- teacher list page -->
+<div class="" ng-show="showTeacherListPage">
+  <div class="jumbotron text-center">
+    <h3 class="">Teacher list page</h3>
+    <button class="btn btn-secondary" ng-click="reset_home()">Home page</button>
+  </div>
+<div class="">
+  <input type="text" class="form-group" name="" placeholder="search" ng-model="searchText">
+  <button ng-show="api_result_data.previous" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.previous, 'prev')">Prev</button>
+  <button ng-show="api_result_data.next" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.next, 'next')">Next</button>
+  <button class="btn btn-primary pull-right"
+  style="margin-left: 680px;"> Add New</button>
+</div>
+<table class="table table-hover table-striped table-hover table-bordered">
+  <br>
+  <tr >
+      <th>Sr.no</th>
+      <th ng-click="order_key='name'; reverseSort=!reverseSort">Name </th>
+      <th ng-click="order_key='age'; reverseSort=!reverseSort">Age</th>
+      <th ng-click="order_key='fav_subject'; reverseSort=!reverseSort">Fav Subject</th>
+      <th ng-click="order_key='created_on'; reverseSort=!reverseSort">Created on</th>
+      <th>Action</th>
+
+  </tr>
+  <tr ng-repeat='data in api_result_data.results |filter:searchText | orderBy: order_key:reverseSort'>
+      <td>{$ $index+1 +  (current_page_number * 10) $}</td>
+      <td>{$data['name']$}</td>
+      <td>{$data['age']$}</td>
+      <td>{$data['fav_subject']$}</td>
+      <td>{$data['created_on']| date : "dd/MM/yy HH:mm:ss"$}</td>
+      <td>
+        <button class="btn btn-primary">
+          Edit
+        </button>
+      <button class="btn btn-danger" ng-click="TeacherDelete(data.id)">Delete</button>
+      </td>
+  </tr>
+</table>
+</div>
+
+<!-- student list page -->
+<div class="" ng-show="showStudentListPage">
+  <div class="jumbotron text-center">
+    <h3>Student list page</h3>
+    <button class="btn btn-secondary" ng-click="reset_home()">Home page</button>
+  </div>
+
+  <div class="">
+    <input type="text" class="form-group" name="" placeholder="search" ng-model="searchText">
+    <button ng-show="api_result_data.previous" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.previous, 'prev')">Prev</button>
+    <button ng-show="api_result_data.next" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.next, 'next')">Next</button>
+    <button class="btn btn-primary pull-right" style="margin-left: 680px;"> Add New</button>
+  </div>
+  <table class="table table-hover table-striped table-hover table-bordered">
+    <br>
+    <tr >
+        <th>Sr.no</th>
+        <th ng-click="order_key='name'; reverseSort=!reverseSort">Name </th>
+        <th ng-click="order_key='age'; reverseSort=!reverseSort">Age</th>
+        <th ng-click="order_key='fav_subject'; reverseSort=!reverseSort">Star Student</th>
+        <th ng-click="order_key='created_on'; reverseSort=!reverseSort">Created on</th>
+        <th>Action</th>
+
+    </tr>
+    <tr ng-repeat='data in api_result_data.results |filter:searchText | orderBy: order_key:reverseSort'>
+        <td>{$ $index+1 +  (current_page_number * 10) $}</td>
+        <td>{$data['name']$}</td>
+        <td>{$data['age']$}</td>
+        <td>No data</td>
+        <td>{$data['created_on']| date : "dd/MM/yy HH:mm:ss"$}</td>
+        <td>
+          <button class="btn btn-primary">
+            Edit
+          </button>
+        <button class="btn btn-danger" ng-click="StudentDelete(data.id)">Delete</button>
+        </td>
+    </tr>
+  </table>
 </div>
 </section>
 {% endblock %}
