@@ -4,7 +4,7 @@
 {% block content %}
 
 <script type="text/javascript">
-  var app = angular.module('myApp', []);
+  var app = angular.module('myApp', ['angucomplete-alt']);
   app.config(['$httpProvider', function ($httpProvider) {
         $httpProvider.defaults.xsrfCookieName = 'csrftoken';
         $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
@@ -14,6 +14,24 @@
       $interpolateProvider.endSymbol('$}');
   });
   app.controller('myCtrl', function($scope, $http) {
+      $scope.students_names_data = {{ students_names | safe}};
+      $scope.teachers_names_data = {{ teachers_names | safe }};
+      $scope.students_value_label = [];
+      $scope.teachers_value_label = [];
+      $scope.selected_students = [];
+      $scope.selected_teachers = [];
+      for (var i=0 ; i< $scope.students_names_data.length; i++){
+        $scope.students_value_label.push(
+              {'label':$scope.students_names_data[i]['name'],
+              'value': $scope.students_names_data[i]['id']
+          });
+      }
+      for (var i=0 ; i< $scope.teachers_names_data.length; i++){
+        $scope.teachers_value_label.push(
+              {'label':$scope.teachers_names_data[i]['name'],
+              'value': $scope.teachers_names_data[i]['id']
+          });
+      }
       $scope.reset_home = function () {
         $scope.showTeacherListPage = false;
         $scope.showStudentListPage = false;
@@ -23,24 +41,25 @@
         $scope.api_result_data = null;
         $scope.searchText = "";
         $scope.current_page_number = 0;
+        $scope.show_fav_students = false;
       }
       $scope.reset_home()
       $scope.getTeacherDataFromRestApi = function(param) {
         $http({method: 'GET', url: `{% url 'rest_api:teacher-list' %}`,data: param
           }).then(function success(response) {
-            console.log(response)
             $scope.api_result_data = response.data;
-            console.log($scope.api_result_data)
           }, function error(response) {
             console.log('something went wrong')
           });
       }
       $scope.getStudentDataFromRestApi = function(param) {
-        $http({method: 'GET', url: `{% url 'rest_api:student-list' %}`,data: param
+        var student_list_url = `{% url 'rest_api:student-list' %}`
+        if (param){
+          student_list_url = student_list_url + '/'+'star_students'
+        }
+        $http({method: 'GET', url: student_list_url,data: param
           }).then(function success(response) {
-              console.log(response)
               $scope.api_result_data = response.data;
-              console.log($scope.api_result_data)
           }, function error(response) {
             console.log('something went wrong')
           });
@@ -48,14 +67,12 @@
       $scope.PrevNextUpdate = function(api_url, type){
         $http({method: 'GET', url: api_url , data: false
           }).then(function success(response) {
-              console.log(response)
               $scope.api_result_data = response.data;
               if (type === 'prev') {
                 $scope.current_page_number -= 1;
               }else {
                 $scope.current_page_number += 1;
               }
-              console.log($scope.api_result_data)
           }, function error(response) {
             console.log('something went wrong')
           });
@@ -103,6 +120,166 @@
           });
         }
       }
+      $scope.createNewTeacher = function() {
+        $scope.selected_student = null;
+        $scope.NewTeacherdata = {};
+        $scope.selected_students = [];
+      }
+      $scope.EditTeacher = function(teacher_obj) {
+        $scope.createNewTeacher();
+        $scope.NewTeacherdata.id = teacher_obj.id;
+        $scope.NewTeacherdata.name = teacher_obj.name;
+        $scope.NewTeacherdata.age = teacher_obj.age;
+        $scope.NewTeacherdata.fav_subject = teacher_obj.fav_subject;
+        $scope.selected_students = teacher_obj.my_students;
+      }
+      $scope.createNewStudent = function() {
+        $scope.selected_teacher = null;
+        $scope.NewStudentdata = {};
+        $scope.selected_teachers = [];
+      }
+      $scope.EditStudent = function(student_obj) {
+        $scope.createNewStudent();
+        $scope.NewStudentdata.id = student_obj.id;
+        $scope.NewStudentdata.name = student_obj.name;
+        $scope.NewStudentdata.age = student_obj.age;
+        $scope.NewStudentdata.star_student = student_obj.star_student;
+        $scope.selected_teachers = student_obj.my_teachers;
+      }
+      $scope.save_update_student = function () {
+        $scope.NewStudentdata.selected_teacher_ids = $scope.selected_teachers.map( teacher => teacher.id)
+        var req_url =`{% url 'rest_api:student-list' %}`
+        var method = 'POST'
+        if ($scope.NewStudentdata.id) {
+          req_url = req_url + '/'+ $scope.NewStudentdata.id;
+          method = "PATCH";
+          $scope.curr_student_obj = $scope.api_result_data.results.filter( student => student.id == $scope.NewStudentdata.id)[0]
+          $scope.prev_teacher_ids = $scope.curr_student_obj.my_teachers.map( teacher => teacher.id)
+          $scope.NewStudentdata.teachers_ids_removed = [];
+          $scope.NewStudentdata.teachers_ids_added = [];
+          for (var i=0 ; i< $scope.prev_teacher_ids.length; i++){
+            if (!$scope.NewStudentdata.selected_teacher_ids.includes($scope.prev_teacher_ids[i])){
+              $scope.NewStudentdata.teachers_ids_removed.push($scope.prev_teacher_ids[i])
+            }
+          }
+          for (var i=0 ; i< $scope.NewStudentdata.selected_teacher_ids.length; i++){
+            if (!$scope.prev_teacher_ids.includes($scope.NewStudentdata.selected_teacher_ids[i])){
+              $scope.NewStudentdata.teachers_ids_added.push($scope.NewStudentdata.selected_teacher_ids[i])
+            }
+          }
+        }
+        $http({
+              method: method,
+              url: req_url,
+              dataType: 'json',
+              data: $scope.NewStudentdata,
+              headers: { "Content-Type": "application/json" }
+            }).then(function success(response) {
+                if (response.status === 201) {
+                    alert('New student obj created successfully !!!');
+                    $scope.getStudentDataFromRestApi(false)
+                 }
+                 else if (response.status === 200 ) {
+                    alert('student data updated successfully !!');
+                    $scope.getStudentDataFromRestApi(false)
+                  }
+                 else {
+                    alert("Sorry something went wrong");
+                 }
+               }, function error(response) {
+                  if (response.status === 429 ) {
+                    alert('Request limit exceeded , Try after sometime !!');
+                  }
+                }
+               );
+  	      };
+
+      $scope.add_student = function(){
+        if ($scope.selected_student) {
+          var current_Seleted_students = $scope.selected_students.map(student => student.id)
+          if (current_Seleted_students.includes($scope.selected_student.description.id)) {
+            $scope.selected_student = null;
+          }else {
+            $scope.selected_students.push($scope.selected_student.description);
+            $scope.selected_student = null;
+          }
+        }
+      }
+      $scope.remove_student = function (student_id) {
+        $scope.selected_students = $scope.selected_students.filter( student => student.id !== student_id)
+      }
+
+      $scope.save_update_teacher = function () {
+        $scope.NewTeacherdata.selected_student_ids = $scope.selected_students.map( student => student.id)
+        var req_url =`{% url 'rest_api:teacher-list' %}`
+        var method = 'POST'
+        if ($scope.NewTeacherdata.id) {
+          req_url = req_url + '/'+ $scope.NewTeacherdata.id;
+          method = "PATCH";
+          $scope.curr_teacher_obj = $scope.api_result_data.results.filter( teacher => teacher.id == $scope.NewTeacherdata.id)[0]
+          $scope.prev_students_ids = $scope.curr_teacher_obj.my_students.map( student => student.id)
+          $scope.NewTeacherdata.students_ids_removed = [];
+          $scope.NewTeacherdata.students_ids_added = [];
+          for (var i=0 ; i< $scope.prev_students_ids.length; i++){
+            if (!$scope.NewTeacherdata.selected_student_ids.includes($scope.prev_students_ids[i])){
+              $scope.NewTeacherdata.students_ids_removed.push($scope.prev_students_ids[i])
+            }
+          }
+          for (var i=0 ; i< $scope.NewTeacherdata.selected_student_ids.length; i++){
+            if (!$scope.prev_students_ids.includes($scope.NewTeacherdata.selected_student_ids[i])){
+              $scope.NewTeacherdata.students_ids_added.push($scope.NewTeacherdata.selected_student_ids[i])
+            }
+          }
+        }
+        $http({
+              method: method,
+              url: req_url,
+              dataType: 'json',
+              data: $scope.NewTeacherdata,
+              headers: { "Content-Type": "application/json" }
+            }).then(function success(response) {
+                if (response.status === 201) {
+                    alert('New teacher obj created successfully !!!');
+                    $scope.getTeacherDataFromRestApi(false)
+                 }
+                 else if (response.status === 200 ) {
+                    alert('Teacher data updated successfully !!');
+                    $scope.getTeacherDataFromRestApi(false)
+                  }
+                 else {
+                    alert("Sorry something went wrong");
+                 }
+               }, function error(response) {
+                  if (response.status === 429 ) {
+                    alert('Request limit exceeded , Try after sometime !!');
+                  }
+                }
+               );
+          };
+          $scope.add_teacher = function(){
+            if ($scope.selected_teacher) {
+              var current_Seleted_teachers = $scope.selected_teachers.map(teacher => teacher.id)
+              if (current_Seleted_teachers.includes($scope.selected_teacher.description.id)) {
+                $scope.selected_teacher = null;
+              }else {
+                $scope.selected_teachers.push($scope.selected_teacher.description);
+                $scope.selected_teacher = null;
+              }
+            }
+          }
+          $scope.remove_teacher = function (teacher_id) {
+            $scope.selected_teachers = $scope.selected_teachers.filter( teacher => teacher.id !== teacher_id)
+          }
+          $scope.filter_star_students = function() {
+            console.log('fn called', $scope.show_fav_students)
+              if ($scope.show_fav_students){
+                $scope.getStudentDataFromRestApi(true);
+              } else {
+                $scope.getStudentDataFromRestApi(false);
+
+              }
+
+          }
   });
 </script>
 <style media="screen">
@@ -111,6 +288,23 @@
   }
   .clickable_text:hover {
     color: blue;
+  }
+  .modal-lg {
+    max-width: 80%;
+  }
+  .modal-dialog{
+    height:100%
+  }
+  .modal-content{
+    height:90%
+  }
+  .modal-body{
+    height:100%;
+    overflow:auto
+  }
+  .tags_alignment {
+    margin-top: 10px;
+    margin-left:4px;
   }
 </style>
 <section  ng-app="myApp" ng-controller="myCtrl">
@@ -139,6 +333,7 @@
   <button ng-show="api_result_data.previous" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.previous, 'prev')">Prev</button>
   <button ng-show="api_result_data.next" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.next, 'next')">Next</button>
   <button class="btn btn-primary pull-right"
+  data-toggle="modal" data-target="#addTeacher" ng-click="createNewTeacher()"
   style="margin-left: 680px;"> Add New</button>
 </div>
 <table class="table table-hover table-striped table-hover table-bordered">
@@ -159,7 +354,7 @@
       <td>{$data['fav_subject']$}</td>
       <td>{$data['created_on']| date : "dd/MM/yy HH:mm:ss"$}</td>
       <td>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" data-toggle="modal" data-target="#addTeacher" ng-click="EditTeacher(data)">
           Edit
         </button>
       <button class="btn btn-danger" ng-click="TeacherDelete(data.id)">Delete</button>
@@ -179,7 +374,18 @@
     <input type="text" class="form-group" name="" placeholder="search" ng-model="searchText">
     <button ng-show="api_result_data.previous" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.previous, 'prev')">Prev</button>
     <button ng-show="api_result_data.next" class="btn btn-info" ng-click="PrevNextUpdate(api_result_data.next, 'next')">Next</button>
-    <button class="btn btn-primary pull-right" style="margin-left: 680px;"> Add New</button>
+    <div style="float:right">
+      <div class="custom-control custom-switch" >
+        <input type="checkbox" class="custom-control-input"
+        ng-class="show_fav_students? 'ng-not-empty' : 'ng-empty'"
+        id="customSwitch2" ng-model="show_fav_students" ng-change="filter_star_students()">
+        <label class="custom-control-label" for="customSwitch2">Fav students</label>
+      </div>
+      <button class="btn btn-primary pull-right"
+      data-toggle="modal" data-target="#addStudent" ng-click="createNewStudent()"
+      > Add New</button>
+    </div>
+
   </div>
   <table class="table table-hover table-striped table-hover table-bordered">
     <br>
@@ -196,10 +402,11 @@
         <td>{$ $index+1 +  (current_page_number * 10) $}</td>
         <td>{$data['name']$}</td>
         <td>{$data['age']$}</td>
-        <td>No data</td>
+        <td>{$ data['star_student'] $}</td>
         <td>{$data['created_on']| date : "dd/MM/yy HH:mm:ss"$}</td>
         <td>
-          <button class="btn btn-primary">
+          <button class="btn btn-primary"
+          data-toggle="modal" data-target="#addStudent" ng-click="EditStudent(data)">
             Edit
           </button>
         <button class="btn btn-danger" ng-click="StudentDelete(data.id)">Delete</button>
@@ -207,5 +414,112 @@
     </tr>
   </table>
 </div>
+
+
+<!-- models for creating/editing teacher -->
+<div class="">
+  <!-- The Modal -->
+    <div class="modal" id="addTeacher">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+          <!-- Modal Header -->
+          <div class="modal-header">
+            <h4 ng-show="!NewTeacherdata.id" class="modal-title">Add New Teacher</h4>
+            <h4 ng-show="NewTeacherdata.id"class="modal-title">Add New Teacher</h4>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+          </div>
+
+          <!-- Modal body -->
+          <div class="modal-body form-group">
+            <label for="uname">Full Name:</label>
+            <input type="text" class="form-control" ng-model="NewTeacherdata.name" id="teacher_name" placeholder="Enter Full Name"
+            <label for="age">Age:</label>
+            <input type="text" class="form-control"  ng-model="NewTeacherdata.age" id="teacher_age" placeholder="Enter Your Age"
+            <label for="fav subject">Fav Subject:</label>
+            <input type="text" class="form-control" ng-model="NewTeacherdata.fav_subject" id="teacher_fav_subject" placeholder="Enter Your Fav Subject"
+            <label for="Add Students">Add Your Students:</label>
+            <p class="btn btn-light tags_alignment" ng-repeat="student in selected_students"> <span>{$ student.name $} <span aria-hidden="true" ng-click="remove_student(student.id)">&times;</span></span></p>
+            <angucomplete-alt id="ex1"
+              placeholder="search students here"
+              selected-object="selected_student"
+              local-data="students_names_data"
+              search-fields="name"
+              title-field="name"
+              minlength="1"
+              inputclass="form-control form-control-small"
+              match-class="highlight"
+              clear-selected="true"
+              ng-click="add_student()"
+              >
+
+          </div>
+
+          <!-- Modal footer -->
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" ng-click="createNewTeacher()" data-dismiss="modal" >Close</button>
+            <button type="button" class="btn btn-primary" ng-click="save_update_teacher()" data-dismiss="modal">Save</button>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+</div>
+<!-- models for creating/editing student -->
+<div class="">
+  <div class="modal" id="addStudent">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <h4 ng-show="!NewTeacherdata.id" class="modal-title">Add New Student</h4>
+          <h4 ng-show="NewTeacherdata.id"class="modal-title">Edit Student</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="modal-body form-group">
+          <label for="uname">Full Name:</label>
+          <input type="text" class="form-control" ng-model="NewStudentdata.name" id="student_name" placeholder="Enter Full Name"
+          <label for="age">Age:</label>
+          <input type="text" class="form-control"  ng-model="NewStudentdata.age" id="student_age" placeholder="Enter Your Age"
+                  <!-- Default checked -->
+          <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input"
+            ng-class=" NewStudentdata.star_student ? 'ng-not-empty' : 'ng-empty'"
+            id="customSwitch1" ng-model="NewStudentdata.star_student">
+            <label class="custom-control-label" for="customSwitch1">Fav Student</label>
+          </div>
+          <br>
+          <label for="Add Students">Add Your teachers:</label>
+          <p class="btn btn-light tags_alignment" ng-repeat="teacher in selected_teachers"> <span>{$ teacher.name $} <span aria-hidden="true" ng-click="remove_teacher(teacher.id)">&times;</span></span></p>
+          <angucomplete-alt id="ex1"
+            placeholder="search teachers here"
+            selected-object="selected_teacher"
+            local-data="teachers_names_data"
+            search-fields="name"
+            title-field="name"
+            minlength="1"
+            inputclass="form-control form-control-small"
+            match-class="highlight"
+            clear-selected="true"
+            ng-click="add_teacher()"
+            >
+        </div>
+        <!-- Modal footer -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" ng-click="createNewStudent()" data-dismiss="modal" >Close</button>
+          <button type="button" class="btn btn-primary" ng-click="save_update_student()" data-dismiss="modal">Save</button>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
 </section>
 {% endblock %}
