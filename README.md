@@ -28,7 +28,7 @@ This is demo rest api develop in django rest framework using class base views wi
 <ul>
 	<li>clone or download it from <a href="https://github.com/rajat4665/Django_based_simple_web_app_with_angularJS" target="_blank" rel="noopener">here</a></li>
 	<li>install docker and docker-compose</li>
-	<li>Run this command</li>
+	<li>Got the root dir of this project where Dockerfile is located and Run this command</li>
   <li><code>docker-compose up</code></li>
  </ul>
  
