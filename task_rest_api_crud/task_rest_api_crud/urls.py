@@ -17,12 +17,17 @@ from django.contrib import admin
 from django.conf.urls import include, url
 from django.conf import settings
 
+from django.views.decorators.csrf import csrf_exempt
+from graphene_django.views import GraphQLView
+from teacher_student_app.graphQL_api_module.schema import schema
+
 urlpatterns = [
     url('admin/', admin.site.urls, name='admin'),
     url(r'app/', include(('teacher_student_app.urls', 'teacher_student_app'),
                                     namespace='core_app')),
     url(r'api/', include(('teacher_student_app.rest_api_module.urls', 'teacher_student_API'),
                                     namespace='rest_api')),
+    url(r"graphql", csrf_exempt(GraphQLView.as_view(graphiql=True, schema=schema))),
 ]
 
 if settings.DEBUG:

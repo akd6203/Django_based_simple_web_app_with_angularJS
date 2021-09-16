@@ -1,6 +1,5 @@
 # rest_framework imports for api views and response
-from rest_framework import viewsets, status
-from rest_framework import generics
+from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
@@ -19,6 +18,9 @@ class TeacherView(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
 
     def get_queryset(self):
+        """
+        optimized query using prefetch_related, now ralated objects will fetch in a single query
+        """
         return Teacher.objects.prefetch_related(
             Prefetch(
                 'my_students',
@@ -62,6 +64,9 @@ class StudentView(viewsets.ModelViewSet):
     queryset = Student.objects.all()
 
     def get_queryset(self):
+        """
+        optimized query using prefetch_related, now ralated objects will fetch in a single query
+        """
         return Student.objects.prefetch_related(
             Prefetch(
                 'my_teachers',
@@ -96,6 +101,9 @@ class StudentView(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='star_students')
     def get_star_students(self, request):
+        """
+        specail method for getting only stared students data
+        """
         star_student_query = self.get_queryset()
         queryset = self.filter_queryset(star_student_query.filter(star_student=True))
 

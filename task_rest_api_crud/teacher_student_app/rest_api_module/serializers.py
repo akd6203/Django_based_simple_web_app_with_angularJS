@@ -7,7 +7,7 @@ class RealtedStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
 
-        fields = ('id', 'name')
+        fields = ('id', 'name', 'star_student')
 
 
 class RealtedTeacherSerializer(serializers.ModelSerializer):

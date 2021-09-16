@@ -48,7 +48,9 @@ PROJECT_APPS = [
 ]
 
 THIRDPARTY_APPS = [
-    'debug_toolbar'
+    'debug_toolbar',
+    'graphene_django',
+    # 'django.contrib.staticfiles'  # Required for GraphiQL
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + REST_FRMW_APPS + PROJECT_APPS + THIRDPARTY_APPS
@@ -122,6 +124,10 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
+# graphQL settings
+GRAPHENE = {
+    "SCHEMA": "teacher_student_app.graphQL_api_module.schema.schema"
+}
 # Reset framework settings
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
